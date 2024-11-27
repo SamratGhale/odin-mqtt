@@ -1,5 +1,5 @@
-package simple_publisher
-import mqtt "../"
+package simple_subscriber
+import mqtt "../../"
 import "core:time"
 import "base:runtime"
 import "core:strings"
@@ -14,7 +14,7 @@ recvbuf : [2048]u8
 publish_callback ::  proc "c"(unused: ^rawptr, published: ^mqtt.mqtt_response_publish)
 {
   context = runtime.default_context()
-  fmt.println(published.topic_name)
+  fmt.println(cast(cstring)published.application_message)
 }
 
 main :: proc(){
@@ -31,33 +31,24 @@ main :: proc(){
   client_id : cstring
   connect_flags :  u8  = u8(MQTTConnectFlags.CLEAN_SESSION)
 
-  connect(&client, client_id, nil, nil, 0, nil, nil, connect_flags, 400)
+  connect(&client, client_id, nil, nil, 0, nil, nil, connect_flags, 60)
 
-  if(client.error != .OK){
+  if client.error != .OK{
     fmt.println(client.error)
+    return
   }
   refresh_thread := thread.create_and_start_with_data(rawptr(&client),client_refresher)
 
-  fmt.println("Ready to begin publishing time")
-  fmt.println("Press enter to publish the current time")
-  fmt.println("Press CTRL-D (or any other key) to exit")
+  error := subscribe(&client, "testtopicsamrat", 0)
+  fmt.println(error)
 
-  for libc.fgetc(libc.stdin) == '\n'{
-    msg : [255]u8
-    curr_time := time.time_to_string_hms(time.now(), msg[:])
-    publish(&client, "testtopicsamrat", rawptr(strings.unsafe_string_to_cstring(curr_time)) , i32(len(curr_time)), u8(MQTTPublishFlags.MQTT_PUBLISH_QOS_0))
-    fmt.println("Published ", curr_time)
+  fmt.println("Listening for messages")
+  fmt.println("Press CTRL-D to exit")
 
-    if(client.error != .OK){
-      fmt.println(client.error)
-      if client.socketfd != -1 do net.close(socket)
-      thread.destroy(refresh_thread)
-      disconnect(&client)
-    }
+  for libc.fgetc(libc.stdin)!= libc.EOF{
 
   }
 
-  fmt.println("Disconnecting ")
   if client.socketfd != -1 do net.close(socket)
   thread.destroy(refresh_thread)
   disconnect(&client)
@@ -68,12 +59,16 @@ client_refresher :: proc(client_raw: rawptr){
   for true{
 
     client := cast(^mqtt.mqtt_client)client_raw
-    mqtt.sync(client)
-    time.sleep(100000000)
+    error := mqtt.sync(client)
+
+    if error != .OK{
+      mqtt.reconnect(client)
+    }
+
+    fmt.println(error)
+    time.sleep(1000000000)
   }
 } 
-
-
 
 
 

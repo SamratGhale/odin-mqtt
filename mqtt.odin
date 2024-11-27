@@ -96,25 +96,25 @@ MQTTConnackReturnCode :: enum u8{
     REFUSED_NOT_AUTHORIZED = 5,
 };
 
-mqtt_response_connack :: bit_field u16{
+mqtt_response_connack :: struct #packed {
     /** 
      * @brief Allows client and broker to check if they have a consistent view about whether there is
      * already a stored session state.
     */
-    session_present_flag : u8| 8,
+    session_present_flag : u8,
 
     /** 
      * @brief The return code of the connection request. 
      * 
      * @see MQTTConnackReturnCode
      */
-    return_code: MQTTConnackReturnCode | 8,
+    return_code: MQTTConnackReturnCode,
 };
 
 
 
 
-mqtt_response_publish :: struct #packed {
+mqtt_response_publish :: struct {
     /** 
      * @brief The DUP flag. DUP flag is 0 if its the first attempt to send this publish packet. A DUP flag
      * of 1 means that this might be a re-delivery of the packet.
@@ -141,13 +141,13 @@ mqtt_response_publish :: struct #packed {
      * @note topic_name is not null terminated. Therefore topic_name_size must be used to get the 
      *       string length.
      */
-    topic_name: ^u8,
+    topic_name: rawptr,
 
     /** @brief The publish message's packet ID. */
     packet_id: u16,
 
     /** @brief The publish message's application message.*/
-    application_message: ^u8,
+    application_message: rawptr,
 
     /** @brief The size of the application message in bytes. */
     application_message_size: size_t,
@@ -358,7 +358,7 @@ mqtt_client :: struct {
      *
      * This is used to allow partial send commands.
      */
-    send_offset: i32,
+    send_offset: size_t,
 
     /** 
      * @brief The timestamp of the last message sent to the buffer.
@@ -411,7 +411,7 @@ mqtt_client :: struct {
      *       Use publish_response_callback_state to keep track of any state information you 
      *       need.
      */
-     publish_response_callback : proc(state: ^rawptr, publish: mqtt_response_publish),
+     publish_response_callback : proc "c" (state: ^rawptr, publish: ^mqtt_response_publish),
 
     /**
      * @brief A pointer to any publish_response_callback state information you need.
@@ -460,13 +460,13 @@ mqtt_client :: struct {
         /** @brief The start of the receive buffer's memory. */
         mem_start: ^u8,
         /** @brief The size of the receive buffer's memory. */
-        mem_size: i32,
+        mem_size: size_t,
 
         /** @brief A pointer to the next writable location in the receive buffer. */
         curr: ^u8,
 
         /** @brief The number of bytes that are still writable at curr. */
-        curr_sz: i32,
+        curr_sz: size_t,
     },
 
     /** 
@@ -547,9 +547,9 @@ foreign lib{
   sync :: proc(client: ^mqtt_client) -> MQTTErrors ---
 
   init :: proc(client: ^mqtt_client, sockfd: mqtt_pal_socket_handle, 
-                sendbuf: ^u8, sendbufsz: i32,
-                recvbuf: ^u8, recvbufsz: i32,
-                publish_response_callback : proc(state: ^rawptr, publish: ^mqtt_response_publish)
+                sendbuf: ^u8, sendbufsz: size_t,
+                recvbuf: ^u8, recvbufsz: size_t,
+                publish_response_callback : proc "c" (state: ^rawptr, publish: ^mqtt_response_publish)
     )-> MQTTErrors---
 
   init_reconnect :: proc(client: ^mqtt_client, 
