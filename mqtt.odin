@@ -1,12 +1,12 @@
-package main
+package mqtt
 
 import "core:c"
-import "core:time"
 import "core:c/libc"
-import "base:runtime"
+
+/*
+    TODO: Fix for linux
+*/
 import "core:sys/windows"
-import "core:net"
-import "core:fmt"
 
 mqtt_pal_time_t :: libc.time_t
 mqtt_pal_socket_handle :: i64
@@ -21,9 +21,9 @@ ssize_t :: libc.ssize_t
 size_t  :: libc.size_t
 
 MQTTControlPacketType :: enum u32 {
-    CONNECT      =1,
-    CONNACK      =2,
-    PUBLISH      =3,
+    CONNECT=1,
+    CONNACK=2,
+    PUBLISH=3,
     PUBACK=4,
     PUBREC=5,
     PUBREL=6,
@@ -597,49 +597,6 @@ foreign lib{
 
 }
 
-sendbuf : [2048]u8
-recvbuf : [2048]u8
-
-publish_callback ::  proc "c"(unused: ^rawptr, published: ^mqtt_response_publish)
-{
-  context = runtime.default_context()
-  fmt.println(published.topic_name)
-}
-
-main :: proc(){
-  socket, err := net.dial_tcp_from_hostname_and_port_string("broker.hivemq.com:1883")
-  net.set_blocking(socket, false)
-
-  if err != nil  do return
-
-
-  client : mqtt_client
-  init(&client, i64(socket), &sendbuf[0], len(sendbuf), &recvbuf[0], len(recvbuf), publish_callback)
-
-  client_id : cstring ="Ghale"
-  connect_flags :  u8  = u8(MQTTConnectFlags.CLEAN_SESSION)
-
-  fmt.println(client_id)
-  connect(&client, client_id, nil, nil, 0, nil, nil, connect_flags, 400)
-
-
-
-  if(client.error != .OK){
-    fmt.println(client.error)
-  }
-
-  msg :cstring ="Samrat" 
-  error := publish(&client, "testtopicsamrat", rawptr(msg) , i32(len(msg)), u8(MQTTPublishFlags.MQTT_PUBLISH_QOS_0))
-
-  fmt.println(client)
-
-  for true{
-    time.sleep(time.Millisecond * 50)
-    error = sync(&client)
-    fmt.println(error)
-  }
-  libc.getchar()
-}
 
 
 
