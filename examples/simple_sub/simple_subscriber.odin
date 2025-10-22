@@ -20,6 +20,8 @@ publish_callback ::  proc "c"(unused: ^rawptr, published: ^mqtt.response_publish
 main :: proc(){
 	socket, err := net.dial_tcp_from_hostname_and_port_string("broker.hivemq.com:1883")
 
+	net.set_blocking(socket, false)
+
 	if err != nil  do return
 
 
@@ -64,7 +66,7 @@ client_refresher :: proc(client_raw: rawptr){
 		}
 		time.sleep(10000000)
 	}
-} 
+}
 
 
 
