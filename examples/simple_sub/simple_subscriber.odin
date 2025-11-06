@@ -11,6 +11,16 @@ import "core:fmt"
 sendbuf : [2048]u8
 recvbuf : [2048]u8
 
+when ODIN_OS == .Windows {
+	HOW_TO_EXIT_MESSAGE := "Press CTRL-D (or any other key) to exit"
+}
+else when ODIN_OS == .Darwin {
+	HOW_TO_EXIT_MESSAGE := "Press CTRL-C to exit"
+}
+else {
+	HOW_TO_EXIT_MESSAGE := ""
+}
+
 publish_callback ::  proc "c"(unused: ^rawptr, published: ^mqtt.response_publish)
 {
 	context = runtime.default_context()
@@ -43,7 +53,7 @@ main :: proc(){
 	fmt.println(error)
 
 	fmt.println("Listening for messages")
-	fmt.println("Press CTRL-D to exit")
+	fmt.println(HOW_TO_EXIT_MESSAGE)
 
 	for libc.fgetc(libc.stdin)!= libc.EOF{
 
